@@ -1,0 +1,29 @@
+# Secrets / credentials
+.env
+.env.*
+*token*.txt
+*secret*
+*credentials*
+mf_token.txt
+*.key
+*.pem
+
+# Logs / caches
+*.log
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+desktop.ini
+.vscode/
+.idea/
+
+# Kill switch (local only)
+PAUSE
+
+# Output / temp
+tmp/
+output/
