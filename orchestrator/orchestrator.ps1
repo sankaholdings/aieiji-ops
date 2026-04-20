@@ -101,18 +101,26 @@ $($issue.body)
 "@
         $result = Invoke-ClaudeCode -Prompt $prompt
 
-        $commentBody = if ($result.stub) {
-            "🤖 **orchestrator**: $($result.message)`n`n_処理時刻: $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss')_"
+        $ts = Get-Date -Format 'yyyy-MM-dd HH:mm:ss'
+        $costFmt = if ($result.cost_usd) { '{0:F4}' -f $result.cost_usd } else { '0' }
+        $footer  = "`n`n---`n🤖 orchestrator · $ts · cost=`$$costFmt · session=$($result.session_id)"
+
+        if ($result.success) {
+            $commentBody = "✅ **処理完了**`n`n$($result.message)$footer"
+            Add-IssueComment -IssueNumber $num -Body $commentBody
+            Remove-IssueLabel -IssueNumber $num -Label $script:LabelInProgress
+            Add-IssueLabel    -IssueNumber $num -Label $script:LabelProcessed
+            Write-ActionLog -Message "Issue #$num 処理完了"
+            $processedCount++
         } else {
-            "🤖 **orchestrator**: 処理完了しました。`n`n$($result.message)"
+            $commentBody = "❌ **処理失敗**`n`n$($result.message)$footer"
+            Add-IssueComment -IssueNumber $num -Body $commentBody
+            Remove-IssueLabel -IssueNumber $num -Label $script:LabelInProgress
+            Add-IssueLabel    -IssueNumber $num -Label $script:LabelFailed
+            Send-ChatworkMessage -Body "[warn]AIEijiSE: Issue #$num 処理失敗[/warn]`n$title`n$($result.message)" | Out-Null
+            Write-ActionLog -Level WARN -Message "Issue #$num 処理失敗: $($result.message)"
+            $failedCount++
         }
-        Add-IssueComment -IssueNumber $num -Body $commentBody
-
-        Remove-IssueLabel -IssueNumber $num -Label $script:LabelInProgress
-        Add-IssueLabel    -IssueNumber $num -Label $script:LabelProcessed
-
-        Write-ActionLog -Message "Issue #$num 処理完了"
-        $processedCount++
 
     } catch {
         Write-ActionLog -Level ERROR -Message "Issue #$num 処理失敗: $($_.Exception.Message)"
