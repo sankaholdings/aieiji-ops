@@ -18,7 +18,7 @@ function Invoke-ClaudeCode {
         # Escape prompt for command-line (double quotes around, escape embedded quotes)
         $escapedPrompt = '"' + ($Prompt -replace '"', '\"') + '"'
 
-        $argString = '-p ' + $escapedPrompt + ' --output-format json --permission-mode bypassPermissions --add-dir "' + $WorkingDirectory + '"'
+        $argString = '-p ' + $escapedPrompt + ' --output-format json --allowedTools "Read,Write,Edit,Glob,Grep,Bash" --add-dir "' + $WorkingDirectory + '"'
 
         $proc = Start-Process -FilePath 'claude' `
             -ArgumentList $argString `
