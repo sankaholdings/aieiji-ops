@@ -51,9 +51,32 @@ function Invoke-ClaudeCode {
         $costStr = if ($result.total_cost_usd) { '{0:F4}' -f $result.total_cost_usd } else { '0' }
         Write-ActionLog -Message "Claude実行: session=$($result.session_id), cost=`$$costStr, duration=$($result.duration_ms)ms, turns=$($result.num_turns)"
 
+        # --- 成否判定 ---
+        # (1) Claude Codeが is_error=true を返した場合は失敗
+        # (2) is_error=false でも、本文末尾に 'RESULT: FAILED' が含まれていれば失敗扱い
+        #     （Claude Code はタスク失敗時もエラー打ち切りせず、本文で報告するケースが多いため）
+        # (3) 'RESULT: SUCCESS' / 'RESULT: FAILED' のいずれのマーカーも見当たらない場合は
+        #     WARNログを残し、従来どおり is_error のみで判定する
+        $isError = [bool]$result.is_error
+        $message = [string]$result.result
+        $resultMarker = $null
+        if ($message -match '(?im)^\s*RESULT:\s*FAILED\b.*$') {
+            $resultMarker = 'FAILED'
+        } elseif ($message -match '(?im)^\s*RESULT:\s*SUCCESS\b.*$') {
+            $resultMarker = 'SUCCESS'
+        }
+
+        if ($resultMarker -eq $null) {
+            Write-ActionLog -Level WARN -Message "Claude応答に RESULT: マーカーなし (session=$($result.session_id)) — is_error のみで判定"
+        } elseif ($resultMarker -eq 'FAILED' -and -not $isError) {
+            Write-ActionLog -Level WARN -Message "Claude応答に RESULT: FAILED を検出 — 失敗扱いに振替 (session=$($result.session_id))"
+        }
+
+        $success = (-not $isError) -and ($resultMarker -ne 'FAILED')
+
         return @{
-            success     = -not $result.is_error
-            message     = $result.result
+            success     = $success
+            message     = $message
             cost_usd    = $result.total_cost_usd
             duration_ms = $result.duration_ms
             session_id  = $result.session_id

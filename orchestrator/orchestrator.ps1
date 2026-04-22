@@ -98,6 +98,13 @@ GitHub Issue #$num への対応を依頼します。
 $($issue.body)
 
 作業完了後、変更はコミット・プッシュしてください。
+
+# 実行上の注意事項
+- PowerShellスクリプトを実行する場合は ``powershell -NoProfile -ExecutionPolicy Bypass -File <path>`` を使用すること。
+- 最後に、処理結果を必ず次のいずれかの形式で1行出力すること（これがorchestratorの成否判定に使われます）:
+  - 成功時: ``RESULT: SUCCESS``
+  - 失敗時: ``RESULT: FAILED`` （直後に失敗理由を1行で続けてよい）
+- タスクを完遂できなかった場合（権限不足、ビルド失敗、テスト失敗、未解決のエラー等）は必ず ``RESULT: FAILED`` を出力すること。成功扱いにしないこと。
 "@
         $result = Invoke-ClaudeCode -Prompt $prompt
 
