@@ -1,4 +1,4 @@
-# =============================================================
+﻿# =============================================================
 # B4: Drift detection
 # Detect social's edits to STATUS.md on G Drive side (out-of-band changes)
 # Phase B0: detection only (log to console). Ingestion is B1+ mirror direction.

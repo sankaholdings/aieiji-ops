@@ -1,4 +1,4 @@
-# =============================================================
+﻿# =============================================================
 # B6: daily digest
 # Emit a one-file daily summary of Issue events to G Drive bridge/digest/YYYY-MM-DD.md
 # Runs once per day (guard via last_digest.txt)

@@ -1,4 +1,4 @@
-# =============================================================
+﻿# =============================================================
 # B1: Action_Log mirror
 # Append new lines from local Action_Log.md to G Drive Action_Log.md
 # =============================================================
@@ -16,15 +16,23 @@ function Invoke-ActionLogMirror {
     }
 
     $localSize = (Get-Item -LiteralPath $LocalPath).Length
-    $lastMirroredSize = 0
+    $lastMirroredSize = $null
 
     if (Test-Path -LiteralPath $StateFile) {
         try {
             $state = Get-Content -LiteralPath $StateFile -Raw | ConvertFrom-Json
             $lastMirroredSize = [int64]$state.lastSize
         } catch {
-            $lastMirroredSize = 0
+            $lastMirroredSize = $null
         }
+    }
+
+    # First run semantics: if state missing, seed watermark to current size without dumping.
+    # Prevents flooding G Drive Action_Log with historical local content.
+    if ($null -eq $lastMirroredSize) {
+        @{ lastSize = $localSize; mirroredAt = (Get-Date).ToString('o'); seeded = $true } | ConvertTo-Json | Set-Content -LiteralPath $StateFile -Encoding UTF8
+        Write-Output "[B1] seeded state at $localSize bytes (no mirror on first run)"
+        return
     }
 
     if ($localSize -le $lastMirroredSize) {

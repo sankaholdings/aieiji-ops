@@ -1,4 +1,4 @@
-# =============================================================
+﻿# =============================================================
 # bridge.ps1 - 1106PC <-> G Drive Bridge (v1.0 Phase B0)
 #
 # Scheduled every 15 minutes (Phase B2 will register Task Scheduler).
