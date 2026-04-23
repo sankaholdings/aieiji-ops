@@ -31,3 +31,6 @@ output/
 # Runtime logs (local only)
 logs/
 orchestrator/.env
+
+# Bridge state (local only, Phase B0+)
+bridge/state/
