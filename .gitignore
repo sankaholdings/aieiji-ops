@@ -7,6 +7,8 @@
 mf_token.txt
 *.key
 *.pem
+gmail_token.json
+gmail_credentials.json
 
 # Logs / caches
 *.log
