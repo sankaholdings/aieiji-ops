@@ -1,68 +1,72 @@
 # ADR-0003: AIEijiConcierge Phase 2 着手
 
-- **Status**: Accepted
+- **Status**: Accepted（2026-04-27 改訂: Apifyから公式コネクタ路線に変更）
 - **Date**: 2026-04-27
 - **Decider**: 三箇栄司
 - **Tracked by**: Issue #15
+- **Related**: ADR-0004（本ADR策定中に発生した実態確認漏れへの対策）
 
 ## Context（背景）
 
-ADR-0002 で AIEijiConcierge は既存Projectとして現役運用が確定した。しかし現状は Phase 1（Eiji秘書が内包する形での運用）にとどまり、以下が実装されていない:
+ADR-0002 で AIEijiConcierge は既存Projectとして現役運用が確定した。Phase 2への移行で外部サービス連携を計画した。
 
-- 外部サービス（TripAdvisor / Booking.com / 楽天トラベル / OpenTable）への実データ接続
-- 旅行嗜好・タワーミッション等のKnowledge整備
-- リアルタイム予約可能性の調査
+当初想定: Apify Actor経由で TripAdvisor / Booking.com / 楽天トラベル / OpenTable に接続。
 
-社長は Hilton Diamond / Eastern Platinum 等の上位ステータスを保有しており、出張・旅行が多い。Phase 2移行による具体的便益が期待できる:
+**2026-04-27 実態確認結果**: claude.ai にはAnthropic公式の以下コネクタが既に提供されていた:
 
-- 上位ステータス維持に必要な「Accor ALL」「Eastern Miles」の予約・搭乗の優先選択判断
-- タワーミッションの未訪問リスト管理と移動経路最適化
-- 海外出張時の現地レストラン・観光地リアルタイム評価取得
+- **Booking.com**（インタラクティブ）
+- **Tripadvisor**（インタラクティブ）
+- **Resy**（インタラクティブ）— レストラン予約
+- **Viator**（インタラクティブ）— ツアー・体験予約
+
+これらは Apify経由のスクレイピングより安定・高速・無料・UIリッチ。よってApifyは不要となった。
 
 ## Decision（決定）
 
-AIEijiConcierge を Phase 2 に昇格させる。具体的には:
+Phase 2 は**公式コネクタのみで構築**する。Apifyは保留（将来必要になった時のため、取得済みトークンは1Passwordに保管）。
 
-### 接続する外部サービス（Apify Actor経由）
+### 接続する公式コネクタ
 
-- **TripAdvisor** — 観光地・ホテル・レストラン評価
-- **Booking.com** — 海外ホテル予約
-- **楽天トラベル** — 国内ホテル
-- **OpenTable** — レストラン予約
+| コネクタ | 用途 |
+|---|---|
+| Booking.com | 海外ホテル予約 |
+| Tripadvisor | 観光地・ホテル・レストラン評価 |
+| Resy | レストラン予約 |
+| Viator | 観光体験・ツアー予約 |
 
-### 別途検討（Phase 2では未着手）
+### Knowledge（既存資産活用）
 
-- **Duffel API** — フライト検索・発券（Apify外）
-- **中国東方航空** — 公式MCP/APIなし。Qwenアプリ併用継続
+- `05_Concierge/Membership_Master.json` ← 必須・アップロード済
+- `05_Concierge/Concierge_Rules.md` ← 必須・アップロード済
+- `2026.05 中国遠征：戦略実行マスターマニュアル` ← 既存・残す
 
-### Knowledge 4ファイル
+### 公式コネクタで対応できない場合の保険
 
-```
-01_memberships.md    — 会員ステータス・維持条件
-02_travel_prefs.md   — ホテルランク帯・食事嗜好・移動の好み
-03_tower_mission.md  — タワー登頂ミッション・既訪問リスト・次の目標
-04_companies.md      — よく使う航空会社・ホテルチェーン・優先OTA
-```
+- **楽天トラベル / OpenTable / Duffel API**: 必要になった時点で再検討
+- **Apifyトークン**: 保管継続（楽天トラベル等が必要になった時に活用）
+- **中国東方航空**: 公式コネクタなし。Qwenアプリ併用継続
 
 ## Consequences（結果）
 
 ### 良い結果
-- Conciergeが「考える」から「実データで動く」に進化
-- 上位ステータス維持の判断材料がリアルタイム取得可能に
-- タワーミッションが構造化される
+- Apify月額コスト発生せず（無料枠ですら使わない）
+- 設定がシンプル（ボタンクリックのみ・Bearerトークン管理不要）
+- Anthropic保証で動作安定
+- インタラクティブUIで提案品質が高い
 
 ### トレードオフ
-- Apify月額コスト発生（無料枠〜$49/月）
-- Apify Actor の維持依存（外部サービスのUI変更で壊れるリスク）
+- 公式コネクタの仕様変更時、回避策がない（Anthropic依存）
+- 楽天トラベル等は当面手動
 
-### 役割分担
-- **Claude側で完結する作業**: Knowledge下書き作成、ADR記録、Issue追跡
-- **社長手作業**: Apifyアカウント作成、APIトークン取得、AIEijiConcierge への MCPコネクタ追加、Knowledgeアップロード
+### 副次的な学び
+- 当初Apify路線で提案・実行を進めたのは**実態確認漏れ**が原因
+- ADR-0004（Reality Check Protocol）を本日同時策定し、再発防止
 
 ## Notes（補足・参考）
 
-- 追跡Issue: https://github.com/sankaholdings/aieiji-ops/issues/15
-- Apify公式: https://apify.com/
-- 上位ステータス: memory `user_membership_statuses.md`
-- Phase 3（秘書を独立Project分離）は Gmail/Calendar MCP整備のタイミングで再検討（時期未定）
-- Phase 4（プッシュ通知 via 1106PC orchestrator → Chatwork）はPhase 2完了後に再着手
+- 追跡Issue: https://github.com/sankaholdings/issues/15
+- 関連ADR:
+  - ADR-0001 / 0002: Projects中心主義とペルソナ復活
+  - ADR-0004: 実態確認プロトコル
+- Phase 3（秘書を独立Project分離）は Gmail/Calendar MCP整備のタイミングで再検討
+- Phase 4（プッシュ通知 via 1106PC orchestrator → Chatwork）はPhase 2完了後
