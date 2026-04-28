@@ -1,6 +1,6 @@
 # ADR-0005: AIEijiConcierge Knowledge を Google Drive 直読み運用に切り替え
 
-- **Status**: Accepted（実装は社長作業待ち）
+- **Status**: Accepted（実装完了 2026-04-27）
 - **Date**: 2026-04-27
 - **Decider**: 三箇栄司
 - **Related**: ADR-0003（Concierge Phase 2）, Issue #16

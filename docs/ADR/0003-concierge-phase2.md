@@ -64,7 +64,7 @@ Phase 2 は**公式コネクタのみで構築**する。Apifyは保留（将来
 
 ## Notes（補足・参考）
 
-- 追跡Issue: https://github.com/sankaholdings/issues/15
+- 追跡Issue: https://github.com/sankaholdings/aieiji-ops/issues/15
 - 関連ADR:
   - ADR-0001 / 0002: Projects中心主義とペルソナ復活
   - ADR-0004: 実態確認プロトコル
