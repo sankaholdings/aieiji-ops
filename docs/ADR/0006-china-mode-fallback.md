@@ -83,11 +83,12 @@ VPN・Qwen両方ダメな緊急時：
   - 国際版（Qwen International）と中国国内版で**機能・回答品質に差**がある
   - どちらをメインにするか・併用するかは別途検討が必要
   - 5月遠征前に使い比べての方針確定が望ましい
-- [x] **1106PC Tailscale接続**: ✅ 動作確認済（2026-04-27 自宅Fujitsuから疎通確認）
+- [x] **1106PC Tailscale接続**: ✅ 動作確認済（直近2026-04-28夜 自宅Fujitsu再確認）
   - Tailscale IP: 100.104.151.97（1106miniPCforTV）
   - SSH鍵認証ログイン成功（sshuser@）
   - ping RTT: 102-442ms（変動あり、Tailscale経由で安定接続）
-  - **注意**: 職場PC（desktop-829prkv / 100.79.138.25）は4日offline。出張時はFujitsu持参のため影響なし
+  - 1106PCは ADR-0008 監査で2タスク稼働中と判明（Orchestrator + GmailThreadWatcher）
+  - **注意**: 職場PC（desktop-829prkv / 100.79.138.25）は業務終了で適宜offline。出張時はFujitsu持参のため影響なし
   - **中国本土からの接続は未テスト**（5月遠征時に実機検証必要）
 
 ## Notes（補足・参考）

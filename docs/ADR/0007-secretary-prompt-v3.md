@@ -75,5 +75,11 @@ Phase 1（v3）の Issue 経由方式は中国でも動作する：
 
 - 関連メモリ: `project_concierge_deployed.md`（v3 移行に伴い「未確認の懸念」セクションは解消）
 - 関連 Issue: #17（Chatwork混同バグ・Closed）— v3 で恒久対策完了
+- **v3稼働実績**（2026-04-28 動作確認）:
+  - Issue #18: 「Chatworkマイチャット最新メッセージ10件取得」→ orchestrator経由で自動処理成功
+  - Issue #19: 「Chatwork全166ルームから未読9ルーム72件抽出」→ 51KBレポート生成成功・トークン類は自動REDACTED処理
+  - WRITE系（POST /messages）は呼ばれていない（READ専用ルール遵守）
+  - 実行コスト: $1.38/セッション程度
+  - これにより「Chatworkチェック依頼 → 自動Issue起票 → orchestrator処理 → コメント返信」の完全自動化が成立した
 - v3 草案の検討経緯: 2026-04-28 セッション内（社長と対話）
 - 次の検討事項: Chatwork 双方向操作の Phase 2-5 ロードマップ → 1〜2週間の運用後に ADR-0008（仮）で議論
