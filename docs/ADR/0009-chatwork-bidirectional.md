@@ -1,6 +1,6 @@
 # ADR-0009: Chatwork双方向操作の段階導入（Phase 2-5 + リアクション）
 
-- **Status**: Draft（2026-04-29起票・論点議論中）
+- **Status**: **Accepted**（2026-04-29 設計フェーズ完了・実装着手待ち）
 - **Date**: 2026-04-29
 - **Decider**: 三箇栄司（draft段階・論点議論後にAccepted化）
 - **Related**:
@@ -176,6 +176,115 @@ ADR-0007が予告した順序：
   - 社長判断: 「実際上はChatwork側からの停止指示が多いと思う」→ (b)を主・(a)を保険として残す
 
 ---
+
+## Implementation Plan（2026-04-29 Round 4 確定）
+
+### 技術スタック
+- **TypeScript + Node.js**（社長判断）
+- `@modelcontextprotocol/sdk`（MCP公式SDK）
+- Chatwork API は素のfetch / undici で叩く（軽量化）
+
+### ディレクトリ構造（aieiji-ops repo内）
+
+```
+C:\aieiji-ops\
+  mcp-servers\
+    chatwork\
+      src\
+        index.ts          ← MCPサーバーエントリ
+        chatwork-api.ts   ← Chatwork API ラッパー
+        guards.ts         ← 重複防止・送信上限・kill switch
+        audit.ts          ← 監査ログ書き込み
+        config.ts         ← 設定読み込み
+      package.json
+      tsconfig.json
+      README.md
+      .env.example
+  logs\
+    chatwork_audit.jsonl  ← 既存logs/に追加
+```
+
+### 設定・認証
+
+| 項目 | 入手方法 | 保存先 | 備考 |
+|---|---|---|---|
+| `CHATWORK_API_TOKEN` | 1106PC既存（v3で利用中）| `.env` | gitignore |
+| `CHATWORK_MY_ACCOUNT_ID` | API `GET /me` で初回取得 | `.env` | キャッシュ |
+| `CHATWORK_MYCHAT_ROOM_ID` | 既知: 46076523 | `config.ts` | ハードコード可 |
+| `MAX_SESSION_SENDS` | 10 | `config.ts` | Decision C |
+| `MAX_ROOM_CONSECUTIVE` | 2 | `config.ts` | Decision C |
+| **`STOP_KEYWORDS`** | 配列化・複数バリエーション対応 | `config.ts` | 下記参照 |
+
+#### STOP_KEYWORDS（複数バリエーション・社長判断 Q3）
+
+社長がマイチャットでMCPを停止したい時、**揺らぎを許容する**ため複数キーワードに対応する。マッチング方式: **大文字小文字無視・前後空白無視・部分一致 OR 完全一致**。
+
+推奨キーワードリスト（実装時に最終調整）:
+```typescript
+const STOP_KEYWORDS = [
+  // 英語系（大文字小文字無視）
+  "STOP_AIEIJI",
+  "Stop_AIEiji",
+  "stop_aieiji",
+  "STOP AIEIJI",
+  // 日本語系
+  "AIEIJIをとめて",
+  "AIEIJIを止めて",
+  "AIEijiをとめて",
+  "AIEijiを止めて",
+  "AIEIJIをストップ",
+  "AIEijiをストップ",
+  "AIEIJIストップ",
+  "AIEijiストップ",
+  "ストップAIEIJI",
+  "AIEIJI停止",
+  "AIEiji停止",
+];
+```
+
+新キーワードを追加したい場合は `config.ts` 編集 → 再起動で反映。
+
+### デプロイ方式（社長判断 Q4: 都度確認ゲート）
+
+#### Phase 1: 開発中（手動起動）
+- 1106PCに SSH接続して `cd C:\aieiji-ops\mcp-servers\chatwork && npm start`
+- ログを観察しながら動作確認・バグ修正
+- Claude Code/Claude.ai秘書から MCP接続して動作試験
+
+#### Phase 2: Task Scheduler移行（⚠️ 都度社長確認必須）
+> **🚨 重要ガード**: Task Scheduler への移行は **社長に都度確認してから実施**（自動移行禁止）。
+>
+> 移行時の確認事項:
+> - 「Phase 1運用で安定している」体感
+> - エラー頻度・リソース消費
+> - 移行後の検証手順合意
+>
+> 社長判断（2026-04-29）: 「都度都度私に確認してきてほしい」
+
+#### Kill switch（Decision C準拠）
+- (a) **PAUSEファイル**: `C:\aieiji-ops\PAUSE` 配置で全停止（既存orchestrator方式継承）
+- (b) **Chatwork経由**: STOP_KEYWORDS をマイチャット監視で検知 → `process.exit(0)`
+- 検知間隔: 30秒（実装時に調整）
+
+### MCP Tools 一覧（MVP・社長判断 Q5: 6個でOK）
+
+| Tool名 | 機能 | 承認方式 |
+|---|---|---|
+| `chatwork_list_rooms` | ルーム一覧取得 | 自動 |
+| `chatwork_get_my_mentions` | 全ルームから自分宛To:を抽出（未読のみ）| 自動 |
+| `chatwork_get_messages` | 指定ルームのメッセージ取得 | 自動 |
+| `chatwork_send_message` | メッセージ送信 | **対話確認**（Decision C: yes/no） |
+| `chatwork_mark_as_read` | ルームを既読化 | 自動 |
+| `chatwork_get_audit_log` | 直近の送信ログ取得（自己診断用）| 自動 |
+
+### 実装着手前の最終確認チェックリスト
+
+実装フェーズ（Round 5）に進む前に確認:
+- [ ] 1106PCに Node.js（v20+推奨）がインストール済みか確認
+- [ ] 1106PCの `CHATWORK_API_TOKEN` を MCP サーバーから読める形に整理
+- [ ] aieiji-ops repo に `mcp-servers/` 用のgitignore追加（`.env` `node_modules` 等）
+- [ ] Issue「Chatwork監査ログ」を1本起票（書き換え方式の運用テスト用）
+- [ ] Claude Code クライアント側のMCP設定方法調査（接続テスト用）
 
 ## Consequences（結果・Draft段階では予測）
 
