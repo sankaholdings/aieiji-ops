@@ -38,3 +38,11 @@ orchestrator/.env
 
 # Bridge state (local only, Phase B0+)
 bridge/state/
+
+# MCP servers (ADR-0009)
+mcp-servers/*/node_modules/
+mcp-servers/*/dist/
+mcp-servers/*/.env
+mcp-servers/*/.env.local
+mcp-servers/*/coverage/
+mcp-servers/*/.turbo/
