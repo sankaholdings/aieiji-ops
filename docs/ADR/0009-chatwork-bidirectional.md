@@ -277,14 +277,61 @@ const STOP_KEYWORDS = [
 | `chatwork_mark_as_read` | ルームを既読化 | 自動 |
 | `chatwork_get_audit_log` | 直近の送信ログ取得（自己診断用）| 自動 |
 
-### 実装着手前の最終確認チェックリスト
+### Claude Code クライアント接続設計（2026-04-29 調査済み）
 
-実装フェーズ（Round 5）に進む前に確認:
-- [ ] 1106PCに Node.js（v20+推奨）がインストール済みか確認
-- [ ] 1106PCの `CHATWORK_API_TOKEN` を MCP サーバーから読める形に整理
-- [ ] aieiji-ops repo に `mcp-servers/` 用のgitignore追加（`.env` `node_modules` 等）
-- [ ] Issue「Chatwork監査ログ」を1本起票（書き換え方式の運用テスト用）
-- [ ] Claude Code クライアント側のMCP設定方法調査（接続テスト用）
+#### MCPサーバー稼働方式
+- **1106PC上でTypeScript MCPサーバーを起動**（ポート3000予定）
+- Transport: **Streamable HTTP**（公式推奨・SSEは非推奨化）
+- リスナーURL: `http://100.104.151.97:3000/mcp`（Tailscale経由・private network）
+- セキュリティ: Tailscaleで private network化されているため、公開せず内部接続のみ
+  - 防御強化案（任意）: `X-API-Key` ヘッダーで簡易認証
+
+#### Claude Code（自宅PC/職場PC）からの接続
+
+**方式A: コマンド一発登録（推奨）**
+```bash
+claude mcp add --transport http chatwork --scope project http://100.104.151.97:3000/mcp
+```
+スコープは `project`（aieiji-ops repoの `.mcp.json` に記録・全PCで同一設定共有）
+
+**方式B: `.mcp.json` 直接編集**
+aieiji-ops repo ルートに以下を配置：
+```json
+{
+  "mcpServers": {
+    "chatwork": {
+      "type": "http",
+      "url": "http://100.104.151.97:3000/mcp"
+    }
+  }
+}
+```
+
+**方式C: 環境変数展開（推奨実装）**
+```json
+{
+  "mcpServers": {
+    "chatwork": {
+      "type": "http",
+      "url": "${MCP_CHATWORK_URL:-http://100.104.151.97:3000/mcp}"
+    }
+  }
+}
+```
+中国遠征時にURL変更が必要な場合に環境変数で対応可能。
+
+#### 接続時の動作
+- 自動再接続: 接続切れ時に最大5回、指数バックオフで再試行
+- `/mcp` コマンドで接続状態確認可能
+- `claude mcp reset-project-choices` で承認をリセット可能（プロジェクトスコープのセキュリティ承認）
+
+### 実装着手前の最終確認チェックリスト ✅ 全項目完了（2026-04-29）
+
+- [x] 1106PCに Node.js（v20+推奨）がインストール済み — **v20.18.0 / npm 10.8.2 確認済**
+- [x] 1106PCの `CHATWORK_API_TOKEN` を MCP サーバーから読める形に整理 — **`C:\aieiji-ops\orchestrator\.env` に実値設定済・MCP実装時は同ファイル参照 or コピー**
+- [x] aieiji-ops repo に `mcp-servers/` 用のgitignore追加 — **commit ade8ea6**
+- [x] Issue「Chatwork監査ログ」を1本起票 — **[#30](https://github.com/sankaholdings/aieiji-ops/issues/30) Open（書き換え運用待機中）**
+- [x] Claude Code クライアント側のMCP設定方法調査 — **Streamable HTTP / `.mcp.json` プロジェクトスコープで決定**
 
 ## Consequences（結果・Draft段階では予測）
 
