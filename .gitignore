@@ -4,6 +4,8 @@
 *token*.txt
 *secret*
 *credentials*
+# Exception: ADRs can mention "secret" or "credentials" in titles/filenames
+!docs/ADR/*.md
 mf_token.txt
 *.key
 *.pem
