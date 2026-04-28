@@ -104,6 +104,47 @@
 例：「この処理は1106PCでしか動かない」「自宅PCには設定がないから無理」
 こうした断片化は3PC運用を破綻させる。GitHub経由で必ず揃える。
 
+### 🚨 `.claude-memory/` は削除禁止リソース（2026-04-28夜 追加）
+
+3PC のClaude Code memory は以下の Junction 構造で運用されている：
+
+```
+[各PCのClaude Code memory path]
+  → (Junction) →
+[Google Drive: .claude-memory/]  ← 唯一の実体（共有）
+```
+
+- ファイル数: 33（2026-04-28時点）
+- 実体は Drive 上の `さんか経営会議（経営分析）/00_System (システム設定)/Claude(SANKA)/.claude-memory/` のみ
+- 自宅Fujitsu / 職場PC / 1106PC それぞれの `C:\Users\<user>\.claude\projects\<encoded>\memory\` から junction 経由で読まれる
+
+#### 絶対禁止操作
+
+- ❌ `rm -rf .claude-memory/`（または GUI による削除）
+- ❌ `.claude-memory/` のフォルダ移動・リネーム
+- ❌ 「整理」目的でも触らない
+- ❌ Drive クライアントから `.claude-memory/` の同期を解除しない
+
+これらを実行すると **3PC全部のmemoryが同時に消失**する。
+
+#### 万一削除した場合の復旧手順
+
+1. Google Drive Web ([drive.google.com/drive/trash](https://drive.google.com/drive/trash)) を開く
+2. `.claude-memory` フォルダを探す（30日間保持される）
+3. 右クリック → 復元
+4. 各PCで Drive 同期完了を待つ（数分〜10分）
+5. PowerShell で junction の整合性を確認:
+   ```powershell
+   Get-Item "C:\Users\$env:USERNAME\.claude\projects\<encoded>\memory" -Force | Format-List Name, LinkType, Target
+   (Get-ChildItem $path -Force).Count
+   ```
+
+#### 2026-04-28夜の事故記録
+
+私（Claude）が ADR-0008 D3 で「`.claude-memory/` 削除」と判断・実行 → 3PC同時消失。Drive ゴミ箱から復旧成功。詳細は ADR-0008 F7。
+
+ADR-0004 Reality Check 違反（Junction Target を確認せず物理削除）の典型例。
+
 ---
 
 ## 原則3：ドキュメント・運営ガバナンス（2026-04-28 追加）
