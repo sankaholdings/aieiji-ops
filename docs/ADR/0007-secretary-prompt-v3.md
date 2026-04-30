@@ -83,3 +83,24 @@ Phase 1（v3）の Issue 経由方式は中国でも動作する：
   - これにより「Chatworkチェック依頼 → 自動Issue起票 → orchestrator処理 → コメント返信」の完全自動化が成立した
 - v3 草案の検討経緯: 2026-04-28 セッション内（社長と対話）
 - 次の検討事項: Chatwork 双方向操作の Phase 2-5 ロードマップ → 1〜2週間の運用後に ADR-0008（仮）で議論
+
+## Revision History
+
+### v3 → v3.1 改訂（2026-04-30 職場PC・社長判断）
+
+- **背景**: 体感サンプル1・2（[Issue #28 コメント](https://github.com/sankaholdings/aieiji-ops/issues/28#issuecomment-4349765421) 参照）で v3 の以下の問題点が発覚:
+  - 「Chatworkをチェック」がデフォルトで **マイチャット限定** に解釈される（v3 line 160 の例示文 `room_id: 46076523` が原因）
+  - 依頼ごとに新規 Issue が起票され続ける（DESIGN_PRINCIPLES ルール3-A「修正優先・新規最後」と矛盾）
+  - `processed` ラベル付与後に Issue が close されず OPEN のまま残る（実例: Issue #32）
+- **改訂内容**:
+  1. Chatwork チェック対応のデフォルト挙動を「全ルーム `mention_num > 0` 走査 + `[To:account_id]` メンション抽出」に変更
+  2. マイチャット限定取得は社長明示指示時のみに限定
+  3. モードC 実行手順に「Issue 起票前の重複チェック」を追加
+  4. `processed` → close の運用を明文化（実装は別タスク・orchestrator 改修）
+- **影響範囲**: AIEiji秘書 Custom Instructions のみ（orchestrator 改修は本ADR範囲外・別 Issue で起票）
+- **反映手順**:
+  1. ✅ `system_prompt_v3.md` ファイルを v3.1 内容に上書き更新（本コミットで実施）
+  2. ⏳ 社長手動: claude.ai → Projects → 「AIEiji秘書」→ カスタム指示 に v3.1 全文置換
+  3. ⏳ サンプル3（v3.1 適用後の挙動観察）を [Issue #28](https://github.com/sankaholdings/aieiji-ops/issues/28) コメントに追記
+- **Status 変更なし**: `Accepted` のまま維持（v3 の根本決定は変更せず・マイナー改訂）
+- **Claude 側のチェック**: `feedback_premise_check.md` 準拠で社長が体感サンプル不足を認識した上で (b) → ガバナンス確認 → (i) v3.1 改訂判断という流れ
