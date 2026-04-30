@@ -372,9 +372,13 @@ aieiji-ops repo ルートに以下を配置：
   - `config.ts`（CHATWORK_API_TOKEN / PORT / MAX_SESSION_SENDS / MAX_ROOM_CONSECUTIVE / STOP_KEYWORDS 配列定義）
 - **動作確認**: 1106PCでの実機稼働確認は未実施
 
-### Stage 4: 残り5 tools + ガード + 監査ログ（2026-04-30 着手→一時停止）
+### Stage 4: 残り5 tools + ガード + 監査ログ（2026-04-30 着手→一時停止→再開）
 
-- **状態**: ⏸ 体感サンプル蓄積優先で**実装一時停止**（社長判断・[ADR-0008 Master Tracker 修正履歴 2026-04-30](0008-system-audit-2026-04-28.md) 参照）
+- **状態**: 🔄 **実装再開**（2026-04-30 サンプル3で前提条件変化・社長判断・[ADR-0008 Master Tracker 修正履歴 2026-04-30](0008-system-audit-2026-04-28.md) 参照）
+- **再開時の仕様修正**（サンプル3 発見を反映）:
+  1. `getMessages(roomId, force=true)` をデフォルトに（`?force=1` 採用・`?force=0` の既読化副作用回避）
+  2. `chatwork_get_my_mentions` も `force=true` で実装し、時間絞り込み（直近 168 時間）を追加検討
+  3. `CHATWORK_MY_ACCOUNT_ID=1772516` を `.env.example` に明記（環境変数優先・`GET /me` フォールバック）
 - **実装範囲（WIP・未マージ）**:
   - 5 tools: `chatwork_get_my_mentions` / `chatwork_get_messages` / `chatwork_send_message` / `chatwork_mark_as_read` / `chatwork_get_audit_log`
   - `SendGuards` クラス（重複防止 / セッション送信上限 / 同一ルーム連続送信上限 / PAUSEファイル監視）
@@ -400,10 +404,12 @@ aieiji-ops repo ルートに以下を配置：
 
 → これが**残り5 toolsの実装優先順位**を再評価する根拠になる。
 
-### 次回再開フロー
+### 実行ログ（2026-04-30 再開セッション）
 
-1. 体感サンプルから「残り5 tools の実装優先順位」を再評価
-2. 必要に応じて本ADR を修正（Decision追記 or 仕様変更）
-3. 職場PCで `git stash pop`（または別PCで Stage 4 を再実装）
-4. 1106PCで動作確認（型チェック → `npm run dev` → ヘルスチェック疎通）
-5. push → main マージ → 各PCで `git pull`
+| Phase | 内容 | 場所 | 状態 |
+|---|---|---|---|
+| **P1** | (b)→(i) 判断変更を ADR-0008/0009 に記録 + commit/push | 職場PC | 🔄 進行中（本コミットで完了予定） |
+| **P2** | `git stash pop` + サンプル3発見の反映（`force=1` / `account_id=1772516`）+ commit/push | 職場PC | ⏳ 未着手 |
+| **P3** | 1106PC で動作確認（`git pull` → `npm install` → `npm run typecheck` → 起動 → `/health` 疎通 → Claude Code MCPクライアント接続） | 1106PC（SSH 経由） | ⏳ 未着手 |
+
+各 Phase 完了時に本表を更新する（DESIGN_PRINCIPLES ルール3-A 準拠・実行ログを集中管理）。
