@@ -36,6 +36,6 @@ claude.ai Projects「AIEijiConcierge」の Knowledge セクションに以下を
 
 ## 注意
 
-`Membership_Master.json` 内の `C:\ClaudeSync\...` パスは旧環境の名残です。Phase 2運用上は影響なし（Knowledgeとして読み込まれた時点で内容が参照可能）。
+`Membership_Master.json` 内の `C:\ClaudeSync\...` パスは ADR-0001 で退役した旧環境の名残です。Phase 2 運用上は影響なし（Knowledge として読み込まれた時点で内容が参照可能）。
 
 旅行嗜好・タワーミッション等の追加Knowledgeが必要になったら、その時点で別途追加すれば十分です（先回りして空テンプレを作らない）。
