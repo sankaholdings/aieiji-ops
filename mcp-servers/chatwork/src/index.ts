@@ -3,10 +3,11 @@ import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/
 import type { CallToolResult } from "@modelcontextprotocol/sdk/types.js";
 import express, { type Request, type Response } from "express";
 import { z } from "zod";
-import { CONFIG } from "./config.js";
+import { CONFIG, STOP_KEYWORDS } from "./config.js";
 import { ChatworkAPI } from "./chatwork-api.js";
 import { AuditLog, type AuditEntry } from "./audit.js";
 import { SendGuards, GuardError } from "./guards.js";
+import { StopMonitor } from "./stop-monitor.js";
 
 const api = new ChatworkAPI(CONFIG.CHATWORK_API_TOKEN);
 const audit = new AuditLog(CONFIG.AUDIT_LOG_PATH);
@@ -40,7 +41,7 @@ function createServer(myAccountId: number): McpServer {
   const server = new McpServer(
     {
       name: "chatwork-mcp",
-      version: "0.2.0",
+      version: "0.3.0",
     },
     { capabilities: {} }
   );
@@ -354,6 +355,15 @@ async function resolveMyAccountId(): Promise<number> {
 async function main(): Promise<void> {
   const myAccountId = await resolveMyAccountId();
 
+  // Kill switch (b) Chatwork経由方式（ADR-0009 Decision C / Issue #34 α）
+  // マイチャットを 30 秒間隔でポーリングし STOP_KEYWORDS を検知したら自己停止する。
+  const stopMonitor = new StopMonitor({
+    api,
+    audit,
+    roomId: CONFIG.CHATWORK_MYCHAT_ROOM_ID,
+  });
+  await stopMonitor.start();
+
   const app = express();
   app.use(express.json());
 
@@ -393,10 +403,18 @@ async function main(): Promise<void> {
     res.json({
       status: "ok",
       server: "chatwork-mcp",
-      version: "0.2.0",
+      version: "0.3.0",
       my_account_id: myAccountId,
       guards_state: guards.snapshot(),
       paused: guards.isPaused(),
+      kill_switch: {
+        a_pause_file: CONFIG.PAUSE_FILE_PATH,
+        b_stop_monitor: {
+          watching_room_id: CONFIG.CHATWORK_MYCHAT_ROOM_ID,
+          interval_ms: 30_000,
+          stop_keywords_count: STOP_KEYWORDS.length,
+        },
+      },
     });
   });
 
@@ -408,11 +426,13 @@ async function main(): Promise<void> {
 
   process.on("SIGINT", () => {
     console.log("\n[chatwork-mcp] SIGINT received, shutting down");
+    stopMonitor.stop();
     httpServer.close(() => process.exit(0));
   });
 
   process.on("SIGTERM", () => {
     console.log("\n[chatwork-mcp] SIGTERM received, shutting down");
+    stopMonitor.stop();
     httpServer.close(() => process.exit(0));
   });
 }

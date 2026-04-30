@@ -1,7 +1,7 @@
 {
   "name": "chatwork-mcp",
-  "version": "0.2.0",
-  "description": "Chatwork MCP server (ADR-0009 / Phase 1 - Stage 4: 6 tools incl. send_message with guards & audit log)",
+  "version": "0.3.0",
+  "description": "Chatwork MCP server (ADR-0009 / Stage 4 + Issue #34 α: 6 tools + kill switch (a) PAUSE file + (b) STOP_KEYWORDS monitor)",
   "type": "module",
   "main": "dist/index.js",
   "private": true,
