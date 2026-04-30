@@ -410,6 +410,30 @@ aieiji-ops repo ルートに以下を配置：
 |---|---|---|---|
 | **P1** | (b)→(i) 判断変更を ADR-0008/0009 に記録 + commit/push | 職場PC | ✅ 完了（commit `bb54edb` で main 反映） |
 | **P2** | `git stash pop` + サンプル3 発見の反映（`force=1` / `lookback_hours` / `account_id=1772516`）+ Stage 4 一式 commit/push | 職場PC | ✅ 完了（本コミットで main 反映） |
-| **P3** | 1106PC で動作確認（`git pull` → `npm install` → `npm run typecheck` → 起動 → `/health` 疎通 → Claude Code MCPクライアント接続） | 1106PC（SSH 経由） | 🔄 次のステップ |
+| **P3** | 1106PC で動作確認（`git pull` → `npm install` → `npm run typecheck` → 起動 → `/health` 疎通 → `.mcp.json` 配置） | 1106PC（SSH 経由） + 職場PC | ✅ 完了（本コミットで main 反映） |
 
 各 Phase 完了時に本表を更新する（DESIGN_PRINCIPLES ルール3-A 準拠・実行ログを集中管理）。
+
+#### P3 動作確認の詳細記録（2026-04-30 14:50頃）
+
+| ステップ | 結果 |
+|---|---|
+| 1106PC `git pull --rebase` | ✅ 完了（旧 WIP は別途 3 commits に整理して push: `22ab539`/`27ae667`/`0fe4d06`）|
+| 1106PC `mcp-servers/chatwork/.env` 作成 | ✅ 完了（`orchestrator/.env` から `CHATWORK_API_TOKEN` コピー + `CHATWORK_MY_ACCOUNT_ID=1772516`）|
+| 1106PC `npm ci` | ✅ 完了（142 packages, 0 vulnerabilities）|
+| 1106PC `npm run typecheck` | ✅ 完了（型エラーなし）|
+| 1106PC `npm run build` | ✅ 完了（`dist/` 配下生成）|
+| 1106PC MCP server 起動 | ✅ PID 17888 で稼働（ssh disconnect 後も orphan で生存・Phase 1 手動起動運用） |
+| 職場PC → Tailscale 経由 `/health` 疎通 | ✅ HTTP 200・`my_account_id=1772516` 反映確認・guards 初期化済 |
+| `.mcp.json` 配置（aieiji-ops repo root） | ✅ 環境変数展開方式 (`${MCP_CHATWORK_URL:-...}`) 採用・中国遠征時の URL 切替に対応 |
+
+#### Phase 3 で残る作業（別セッションで実施）
+
+- **クライアント接続テスト**: 別の Claude Code セッションを起動して `.mcp.json` を読み込ませ、`/mcp` で接続確認 → `chatwork_list_rooms` `chatwork_get_my_mentions` で疎通確認
+- **接続テスト結果はサンプル4 として Issue #28 に記録**（v3 系ではなく MCP 直接対話の体感）
+
+#### Phase 3 で残る運用判断（社長都度確認・ADR-0009 line 254 準拠）
+
+- **Task Scheduler 移行**: 現状は ssh 起動の orphan node プロセス。安定性を体感したうえで Task Scheduler 移行するか社長判断。私から勝手に移行しない。
+- **STOP_KEYWORDS 監視ループ実装**（kill switch (b)）: 別タスク・体感サンプル蓄積後に判断
+- **Issue #30 への監査ログ書き換えロジック**: 別タスク

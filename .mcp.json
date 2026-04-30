@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "chatwork": {
+      "type": "http",
+      "url": "${MCP_CHATWORK_URL:-http://100.104.151.97:3000/mcp}"
+    }
+  }
+}
