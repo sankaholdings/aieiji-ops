@@ -1,5 +1,6 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
+import type { IssuePoster } from "./issue-poster.js";
 
 export type AuditStatus = "success" | "blocked" | "error";
 
@@ -14,7 +15,18 @@ export interface AuditEntry {
 }
 
 export class AuditLog {
-  constructor(private readonly filePath: string) {}
+  private readonly filePath: string;
+  private readonly issuePoster: IssuePoster | null;
+  private readonly issuePostLimit: number;
+
+  constructor(
+    filePath: string,
+    opts?: { issuePoster?: IssuePoster; issuePostLimit?: number }
+  ) {
+    this.filePath = filePath;
+    this.issuePoster = opts?.issuePoster ?? null;
+    this.issuePostLimit = opts?.issuePostLimit ?? 50;
+  }
 
   private async ensureDir(): Promise<void> {
     await fs.mkdir(path.dirname(this.filePath), { recursive: true });
@@ -23,6 +35,18 @@ export class AuditLog {
   async append(entry: AuditEntry): Promise<void> {
     await this.ensureDir();
     await fs.appendFile(this.filePath, JSON.stringify(entry) + "\n", "utf8");
+    // Issue #34 β: 監査 Issue へ最新 N 件を書き換え反映（fire-and-forget）
+    if (this.issuePoster !== null) {
+      try {
+        const recent = await this.readRecent(this.issuePostLimit);
+        this.issuePoster.schedulePost(recent);
+      } catch (err) {
+        console.error(
+          "[audit] schedulePost failed (continuing):",
+          err instanceof Error ? err.message : String(err)
+        );
+      }
+    }
   }
 
   async readRecent(limit: number): Promise<AuditEntry[]> {

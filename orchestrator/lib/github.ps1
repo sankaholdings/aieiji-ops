@@ -65,3 +65,18 @@ function Add-IssueComment {
         Write-ActionLog -Level WARN -Message "Issue #$IssueNumber へのコメント失敗 (exit=$LASTEXITCODE)"
     }
 }
+
+# ADR-0009 / Issue #34 γ: processed ラベル付与時に Issue を自動 close する。
+# 業務 Issue (ADR / Cleanup / Bug 等) には auto-process ラベルが付かない前提。
+function Close-Issue {
+    param(
+        [int]$IssueNumber,
+        [string]$Reason = "completed"
+    )
+    & gh issue close $IssueNumber --repo $script:GitHubRepo --reason $Reason 2>$null | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        Write-ActionLog -Level WARN -Message "Issue #$IssueNumber CLOSE 失敗 (exit=$LASTEXITCODE)"
+    } else {
+        Write-ActionLog -Message "Issue #$IssueNumber CLOSE 完了 (reason=$Reason)"
+    }
+}

@@ -26,6 +26,19 @@ export const CONFIG = {
     "C:\\aieiji-ops\\logs\\chatwork_audit.jsonl",
   PAUSE_FILE_PATH:
     process.env.PAUSE_FILE_PATH ?? "C:\\aieiji-ops\\PAUSE",
+  // Issue #34 β: 監査ログを GitHub Issue 本文に書き換え反映する設定
+  AUDIT_GITHUB_REPO:
+    process.env.AUDIT_GITHUB_REPO ?? "sankaholdings/aieiji-ops",
+  AUDIT_GITHUB_ISSUE_NUMBER: Number.parseInt(
+    process.env.AUDIT_GITHUB_ISSUE_NUMBER ?? "30",
+    10
+  ),
+  AUDIT_GITHUB_POST_ENABLED:
+    (process.env.AUDIT_GITHUB_POST_ENABLED ?? "true").toLowerCase() !== "false",
+  AUDIT_GITHUB_POST_LIMIT: Number.parseInt(
+    process.env.AUDIT_GITHUB_POST_LIMIT ?? "50",
+    10
+  ),
 } as const;
 
 export const STOP_KEYWORDS = [

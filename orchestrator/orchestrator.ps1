@@ -117,7 +117,9 @@ $($issue.body)
             Add-IssueComment -IssueNumber $num -Body $commentBody
             Remove-IssueLabel -IssueNumber $num -Label $script:LabelInProgress
             Add-IssueLabel    -IssueNumber $num -Label $script:LabelProcessed
-            Write-ActionLog -Message "Issue #$num 処理完了"
+            # ADR-0009 / Issue #34 γ: processed 付与と同時に Issue を CLOSE
+            Close-Issue       -IssueNumber $num -Reason 'completed'
+            Write-ActionLog -Message "Issue #$num 処理完了 + CLOSE"
             $processedCount++
         } else {
             $commentBody = "❌ **処理失敗**`n`n$($result.message)$footer"

@@ -1,7 +1,7 @@
 {
   "name": "chatwork-mcp",
-  "version": "0.3.0",
-  "description": "Chatwork MCP server (ADR-0009 / Stage 4 + Issue #34 α: 6 tools + kill switch (a) PAUSE file + (b) STOP_KEYWORDS monitor)",
+  "version": "0.4.0",
+  "description": "Chatwork MCP server (ADR-0009 / Issue #34 α+β: 6 tools + kill switch (a) PAUSE + (b) STOP_KEYWORDS monitor + audit log auto-posting to GitHub Issue)",
   "type": "module",
   "main": "dist/index.js",
   "private": true,

@@ -8,9 +8,20 @@ import { ChatworkAPI } from "./chatwork-api.js";
 import { AuditLog, type AuditEntry } from "./audit.js";
 import { SendGuards, GuardError } from "./guards.js";
 import { StopMonitor } from "./stop-monitor.js";
+import { IssuePoster } from "./issue-poster.js";
 
 const api = new ChatworkAPI(CONFIG.CHATWORK_API_TOKEN);
-const audit = new AuditLog(CONFIG.AUDIT_LOG_PATH);
+const issuePoster = CONFIG.AUDIT_GITHUB_POST_ENABLED
+  ? new IssuePoster({
+      repo: CONFIG.AUDIT_GITHUB_REPO,
+      issueNumber: CONFIG.AUDIT_GITHUB_ISSUE_NUMBER,
+      recentLimit: CONFIG.AUDIT_GITHUB_POST_LIMIT,
+    })
+  : undefined;
+const audit = new AuditLog(CONFIG.AUDIT_LOG_PATH, {
+  issuePoster,
+  issuePostLimit: CONFIG.AUDIT_GITHUB_POST_LIMIT,
+});
 const guards = new SendGuards({
   maxSessionSends: CONFIG.MAX_SESSION_SENDS,
   maxRoomConsecutive: CONFIG.MAX_ROOM_CONSECUTIVE,
@@ -41,7 +52,7 @@ function createServer(myAccountId: number): McpServer {
   const server = new McpServer(
     {
       name: "chatwork-mcp",
-      version: "0.3.0",
+      version: "0.4.0",
     },
     { capabilities: {} }
   );
@@ -403,7 +414,7 @@ async function main(): Promise<void> {
     res.json({
       status: "ok",
       server: "chatwork-mcp",
-      version: "0.3.0",
+      version: "0.4.0",
       my_account_id: myAccountId,
       guards_state: guards.snapshot(),
       paused: guards.isPaused(),
@@ -414,6 +425,12 @@ async function main(): Promise<void> {
           interval_ms: 30_000,
           stop_keywords_count: STOP_KEYWORDS.length,
         },
+      },
+      audit_post: {
+        enabled: CONFIG.AUDIT_GITHUB_POST_ENABLED,
+        github_repo: CONFIG.AUDIT_GITHUB_REPO,
+        issue_number: CONFIG.AUDIT_GITHUB_ISSUE_NUMBER,
+        recent_limit: CONFIG.AUDIT_GITHUB_POST_LIMIT,
       },
     });
   });
