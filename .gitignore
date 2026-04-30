@@ -6,6 +6,8 @@
 *credentials*
 # Exception: ADRs can mention "secret" or "credentials" in titles/filenames
 !docs/ADR/*.md
+# Exception: .env.example is a public template (no secrets)
+!**/.env.example
 mf_token.txt
 *.key
 *.pem

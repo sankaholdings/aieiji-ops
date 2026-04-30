@@ -408,8 +408,8 @@ aieiji-ops repo ルートに以下を配置：
 
 | Phase | 内容 | 場所 | 状態 |
 |---|---|---|---|
-| **P1** | (b)→(i) 判断変更を ADR-0008/0009 に記録 + commit/push | 職場PC | 🔄 進行中（本コミットで完了予定） |
-| **P2** | `git stash pop` + サンプル3発見の反映（`force=1` / `account_id=1772516`）+ commit/push | 職場PC | ⏳ 未着手 |
-| **P3** | 1106PC で動作確認（`git pull` → `npm install` → `npm run typecheck` → 起動 → `/health` 疎通 → Claude Code MCPクライアント接続） | 1106PC（SSH 経由） | ⏳ 未着手 |
+| **P1** | (b)→(i) 判断変更を ADR-0008/0009 に記録 + commit/push | 職場PC | ✅ 完了（commit `bb54edb` で main 反映） |
+| **P2** | `git stash pop` + サンプル3 発見の反映（`force=1` / `lookback_hours` / `account_id=1772516`）+ Stage 4 一式 commit/push | 職場PC | ✅ 完了（本コミットで main 反映） |
+| **P3** | 1106PC で動作確認（`git pull` → `npm install` → `npm run typecheck` → 起動 → `/health` 疎通 → Claude Code MCPクライアント接続） | 1106PC（SSH 経由） | 🔄 次のステップ |
 
 各 Phase 完了時に本表を更新する（DESIGN_PRINCIPLES ルール3-A 準拠・実行ログを集中管理）。
