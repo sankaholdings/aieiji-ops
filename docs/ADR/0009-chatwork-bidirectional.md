@@ -357,3 +357,53 @@ aieiji-ops repo ルートに以下を配置：
 - ADR-0008 Master Trackerに前倒し履歴を記録済（2026-04-29 commit 23a06a9）
 - Auditor: Claude (claude-opus-4-7) 自宅Fujitsuセッション（社長との対話で起票）
 - Draft → Accepted 化のタイミング: 論点A/B/C すべてのIssueがCloseされた後
+
+---
+
+## Implementation Status（実装進捗）
+
+### Stage 1: スケルトン + chatwork_list_rooms（2026-04-29 自宅Fujitsu）
+
+- **状態**: ✅ commit `765edb2` で main 反映済
+- **実装範囲**:
+  - MCP HTTP server スケルトン（Express + `StreamableHTTPServerTransport`）
+  - 1 tool: `chatwork_list_rooms`
+  - ヘルスチェック (`/health`)
+  - `config.ts`（CHATWORK_API_TOKEN / PORT / MAX_SESSION_SENDS / MAX_ROOM_CONSECUTIVE / STOP_KEYWORDS 配列定義）
+- **動作確認**: 1106PCでの実機稼働確認は未実施
+
+### Stage 4: 残り5 tools + ガード + 監査ログ（2026-04-30 着手→一時停止）
+
+- **状態**: ⏸ 体感サンプル蓄積優先で**実装一時停止**（社長判断・[ADR-0008 Master Tracker 修正履歴 2026-04-30](0008-system-audit-2026-04-28.md) 参照）
+- **実装範囲（WIP・未マージ）**:
+  - 5 tools: `chatwork_get_my_mentions` / `chatwork_get_messages` / `chatwork_send_message` / `chatwork_mark_as_read` / `chatwork_get_audit_log`
+  - `SendGuards` クラス（重複防止 / セッション送信上限 / 同一ルーム連続送信上限 / PAUSEファイル監視）
+  - `AuditLog` クラス（JSONL 永続化・`C:\aieiji-ops\logs\chatwork_audit.jsonl`）
+  - `chatwork-api.ts` 拡張（`getMe` / `getMessages` / `sendMessage` / `markAsRead`）
+  - `.env.example` 追加（`.gitignore` に `!**/.env.example` 例外を追加）
+  - README 全面更新 / `package.json` version 0.1.0 → 0.2.0
+- **保管先**: 職場PC（desktop-829prkv） `C:\aieiji-ops` の `git stash@{0}`（メッセージ: `ADR-0009 Stage 4 WIP (paused 2026-04-30 by social judgment for sample collection priority)`）
+- **未実施**:
+  - 動作確認（1106PCでの起動・型チェック）
+  - STOP_KEYWORDS 監視ループ実装（kill switch (b) Chatwork経由方式）
+  - Issue #30 への監査ログ書き換えロジック
+  - Claude Code クライアント接続テスト（`.mcp.json` 設定）
+- **再開条件**: v3 秘書（claude.ai Projects）での体感サンプル蓄積（Issue #28 コメントで追跡）
+
+### 体感サンプル蓄積運用（2026-04-30〜）
+
+社長は v3 秘書で Chatwork チェック依頼を実運用しながら、以下を Issue #28 にコメント追記する:
+
+- 不便だった点（10分待ちが辛い・要約が雑・To:抽出漏れ等）
+- 「対話完結したい」と思った場面
+- 「リアクション欲しい」と思ったケース（Decision Bで諦めた件・実運用で本当に不要か再検証）
+
+→ これが**残り5 toolsの実装優先順位**を再評価する根拠になる。
+
+### 次回再開フロー
+
+1. 体感サンプルから「残り5 tools の実装優先順位」を再評価
+2. 必要に応じて本ADR を修正（Decision追記 or 仕様変更）
+3. 職場PCで `git stash pop`（または別PCで Stage 4 を再実装）
+4. 1106PCで動作確認（型チェック → `npm run dev` → ヘルスチェック疎通）
+5. push → main マージ → 各PCで `git pull`
