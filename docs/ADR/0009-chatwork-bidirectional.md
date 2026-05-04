@@ -466,6 +466,32 @@ aieiji-ops repo ルートに以下を配置：
 
 中国遠征 (2026-05-08〜) 前に恒久化完了。Tailscale 接続さえ生きていれば中国モードでも `.mcp.json` 経由で叩ける。
 
+#### H3 nssm Windows サービス化への切替（2026-05-04 同日午後）
+
+Z2-mod-v2 で Task Scheduler 化した直後、起動から ~83 分後に node プロセスが SIGINT で死亡する事象が発生（LastTaskResult `0xC000013A` STATUS_CONTROL_C_EXIT・ログ末尾に `^C`）。原因は AtLogon Interactive 起動だと、ejsan 対話セッション内のコンソールグループに Ctrl+C がブロードキャストされた際（RDP 切断・別ターミナル操作等）に巻き込まれ死すること。中国遠征中の RDP 操作頻発を考慮し H3（nssm Windows サービス化）へ切替。
+
+##### 確定した運用仕様（H3 nssm 版）
+
+| 項目 | 値 |
+|---|---|
+| Service 名 | `AIEijiChatworkMCP` |
+| StartType | Automatic（OS 起動時自動開始・**ログオン不要**）|
+| 実行コンテキスト | LocalSystem（**対話セッション独立**・SIGINT 免疫）|
+| nssm 場所 | `C:\Tools\nssm\nssm.exe`（2.24・nssm.cc から DL）|
+| Action | `C:\Program Files\nodejs\node.exe dist\index.js` |
+| Working dir | `C:\aieiji-ops\mcp-servers\chatwork` |
+| ログ | `C:\aieiji-ops\logs\chatwork_mcp.out.log` / `.err.log`（10MB ローテーション）|
+| 自動復旧 | nssm デフォルト（クラッシュ時自動再起動）|
+| 旧 Task `AIEiji-Chatwork-MCP` | **Disabled**（フォールバック保持・削除なし）|
+| Firewall | `AIEiji-Chatwork-MCP-3000`（TCP 3000 Inbound Allow / Private only・H3 切替後も継続有効）|
+
+##### H3 で得られた耐性
+
+- **RDP 切断耐性**: 対話セッション独立 → 中国遠征中の 1106PC RDP 操作で巻き込まれ死しない
+- **ログオン不要**: ejsan 自動ログオンが切れても起動継続
+- **Ctrl+C 免疫**: SIGINT が届く経路がない
+- **クラッシュ自動再起動**: nssm デフォルト挙動
+
 #### Phase 3 で残る作業（引き続き別セッションで）
 
 - **クライアント接続テスト**: Claude Code 新セッションで `.mcp.json` を読み込ませ chatwork ツール疎通確認（curl 機械検証は完了済・実クライアント検証は未実施）
