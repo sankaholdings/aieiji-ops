@@ -434,6 +434,38 @@ aieiji-ops repo ルートに以下を配置：
 
 #### Phase 3 で残る運用判断（社長都度確認・ADR-0009 line 254 準拠）
 
-- **Task Scheduler 移行**: 現状は ssh 起動の orphan node プロセス。安定性を体感したうえで Task Scheduler 移行するか社長判断。私から勝手に移行しない。
-- **STOP_KEYWORDS 監視ループ実装**（kill switch (b)）: 別タスク・体感サンプル蓄積後に判断
-- **Issue #30 への監査ログ書き換えロジック**: 別タスク
+- ~~**Task Scheduler 移行**: 現状は ssh 起動の orphan node プロセス。安定性を体感したうえで Task Scheduler 移行するか社長判断。私から勝手に移行しない。~~ → ✅ **2026-05-04 govcheck Z2-mod-v2 で実施**（社長承認済・下記実行ログ参照）
+- ~~**STOP_KEYWORDS 監視ループ実装**（kill switch (b)）: 別タスク・体感サンプル蓄積後に判断~~ → ✅ Issue #34 α で実装完了（commit `1c2ff74`）
+- ~~**Issue #30 への監査ログ書き換えロジック**: 別タスク~~ → ✅ Issue #34 β で実装完了（commit `7a2c56d`）
+
+### 実行ログ（2026-05-04 govcheck Z2-mod-v2 セッション）
+
+2026-05-04 朝、自宅PC からの govcheck で「`http://100.104.151.97:3000/health` に応答が無い」事態が発覚。原因切り分けと恒久化を社長承認のもと実施。
+
+| Phase | 内容 | 結果 |
+|---|---|---|
+| **A1** | サーバ側を curl で機械検証（initialize → tools/list → tools/call chatwork_list_rooms） | ✅ 完了（6 tools 列挙・70KB 実応答取得） |
+| **A2** | `Start-Process -WindowStyle Hidden` で起動が即終了する事象 → 切り分け不要・cmd ラッパで回避（Z2 へ統合） | ✅ 完了 |
+| **B (Z2-mod-v2)** | Task Scheduler 登録（既存 `AIEiji-Orchestrator` と同一パターン） | ✅ 完了 |
+| **追加 1** | Windows Firewall の `Node.js JavaScript Runtime` Block ルールが Tailscale 経由を殺していた → 無効化 + ポート 3000 Private 専用 Allow ルール追加 | ✅ 完了 |
+| **追加 2** | memory `reference_1106pc.md` / `reference_aieiji_ops_clone.md` / Claude(SANKA)/CLAUDE.md にFirewall 知見と運用手順を追記 | ✅ 完了 |
+
+#### 確定した常駐運用仕様（再起動・電源OFFでも自動復旧）
+
+| 項目 | 値 |
+|---|---|
+| Task 名 | `AIEiji-Chatwork-MCP` |
+| Principal | `1106miniPCforTV\ejsan` / Interactive / RunLevel=Highest |
+| Trigger | AtLogon (ejsan)・1106PC 常時 ejsan ログオン前提 |
+| Action | `cmd.exe /c "node dist\index.js > C:\aieiji-ops\logs\chatwork_mcp.out.log 2>&1"` |
+| Working dir | `C:\aieiji-ops\mcp-servers\chatwork` |
+| Restart on failure | RestartCount=3 / RestartInterval=1分 |
+| ExecutionTimeLimit | 0（無制限・常駐サービス）|
+| Firewall ルール | `AIEiji-Chatwork-MCP-3000` (TCP 3000 Inbound Allow / Private profile only) |
+| 旧 Block ルール | `Node.js JavaScript Runtime` (2件) を Disabled に変更 |
+
+中国遠征 (2026-05-08〜) 前に恒久化完了。Tailscale 接続さえ生きていれば中国モードでも `.mcp.json` 経由で叩ける。
+
+#### Phase 3 で残る作業（引き続き別セッションで）
+
+- **クライアント接続テスト**: Claude Code 新セッションで `.mcp.json` を読み込ませ chatwork ツール疎通確認（curl 機械検証は完了済・実クライアント検証は未実施）
