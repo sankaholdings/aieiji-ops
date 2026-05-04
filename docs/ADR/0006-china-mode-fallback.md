@@ -101,6 +101,60 @@ VPN・Qwen両方ダメな緊急時：
 - 5月遠征の詳細は claude.ai Knowledge の「2026.05 中国遠征：戦略実行マスターマニュアル」参照
 - 帰国後（5/20以降）に本ADRの実効性をレトロスペクティブし、必要なら ADR-0007 で改善版を策定
 
+---
+
+## 中国遠征中の障害判断フロー（2026-05-04 govcheck セッション追加）
+
+中国滞在中（2026-05-08〜2026-05-20）に何かが落ちた時の **症状 → 切り分け → 対処** マッピング。疎通テスト手順は別ファイル `Claude(SANKA)/05_Concierge/China_Trip_2026.05_Prep/From_China_Connectivity_Test.md` を参照（Phase 1-4 の段階的検証手順）。
+
+### 症状別判断表
+
+| # | 症状 | 切り分け | 対処 |
+|---|---|---|---|
+| 1 | claude.ai が応答しない | スマホ別経路で claude.ai → 良之助 VPN ON/OFF・別 VPN 試行 | Plan A 死亡 → Plan B-2 (Qwen 国際版) へ切替・Plan B-1 出発前バンドル参照・緊急時 Plan B-3 |
+| 2 | Tailscale で 1106PC `/health` NG | ① 良之助 VPN ON で再試行 → ② `tailscale status` 再確認 → ③ Phase 1-3 順次 (`From_China_Connectivity_Test.md`) | GFW 影響なら VPN ON で回避・Tailscale 完全死なら Plan B-3 (Chatwork → orchestrator)・全部 NG なら Plan B-1 単独 |
+| 3 | nssm `AIEijiChatworkMCP` 応答なし | SSH ejsan@100.104.151.97 で `Get-Service AIEijiChatworkMCP` | `Stopped` なら `Restart-Service AIEijiChatworkMCP`・SSH 自体 NG なら #4 へ |
+| 4 | 1106PC orchestrator も応答なし | Tailscale 不通 + Chatwork Issue も 10 分以内に処理されない | 1106PC 完全死 = 帰国まで諦め・Plan B-1 + Qwen のみ運用・帰国後 RDP/物理アクセスで復旧 |
+| 5 | claude.ai アカウントロック | account.anthropic.com で「異常アクセス検知」表示 | 中国遠征中はよくある（DESIGN_PRINCIPLES 原則1）・Plan B-2 (Qwen 国際版) でしのぐ・帰国後ロック解除 |
+| 6 | Chatwork も中国本土でブロック | 滞在地 ISP 切替・WeChat/DingTalk が通るか | Plan B-1 ローカルバンドルのみで凌ぐ・連絡は WeChat 経由・帰国まで業務メール閲覧のみ |
+| 7 | Gmail/Drive のみブロック | claude.ai は通る + Gmail/Drive のみ NG → Google 中国 IP 検知 | Google security ページで「最近のセキュリティイベント」確認・SMS 2 段階認証 SMS が中国 SIM に届くか別経路で確保 |
+
+### 中国遠征中の SSH ワンライナー（暗記推奨）
+
+```bash
+# 1106PC chatwork-mcp 状態確認
+ssh ejsan@100.104.151.97 'powershell -NoProfile -Command "Get-Service AIEijiChatworkMCP | Select Name,Status,StartType"'
+
+# nssm 再起動（chatwork-mcp 復旧）
+ssh ejsan@100.104.151.97 'powershell -NoProfile -Command "Restart-Service AIEijiChatworkMCP"'
+
+# orchestrator のラスト処理確認
+ssh ejsan@100.104.151.97 'powershell -NoProfile -Command "Get-Content C:\aieiji-ops\logs\Action_Log.md -Tail 20"'
+
+# Tailscale 状態（1106PC 側）
+ssh ejsan@100.104.151.97 'tailscale status'
+```
+
+### 持参すべきローカルファイル（D: ドライブ・2026-05-04 Reality Check 済の正確なパス）
+
+中国遠征出発前 (5/7) までに D: ドライブ実体で確保（Drive 同期前提でもローカル実体必須）:
+
+| パス | 用途 |
+|---|---|
+| `D:\Gドライブ\さんか経営会議（経営分析）\00_System (システム設定)\Claude(SANKA)\05_Concierge\China_Trip_2026.05_Prep\` | Plan B-1 出発前バンドル本体（PlanB1_Bundle.md / 2026.05_China_Master_Manual.md / From_China_Connectivity_Test.md / Qwen_Evaluation_Checklist.md / PlanB1_Concierge_Prompt.md） |
+| 同上 `\.claude-memory\` | memory junction の Drive 実体（Plan B 中も memory 参照可） |
+| 同上 `\CLAUDE.md` | ガバナンス原則・接続経路一覧 |
+| 同上 `\05_Concierge\Membership_Master.json` | 会員ステータス（Concierge Phase 2 知識ベース）⚠️ パスは `05_Concierge/` 配下（`02_CFO/` ではない・Reality Check 済） |
+| 同上 `\05_Concierge\Concierge_Rules.md` | Concierge 運用ルール |
+
+### Plan B-3 緊急時の Chatwork 経由 1106PC 操作
+
+1. 中国側 PC・スマホから Chatwork でマイチャット (room_id 46076523) を開く
+2. aieiji-ops に Issue を発行（自動 Issue 起票構成は ADR-0009 参照）
+3. もしくは GitHub web (まれに通る) から直接 `auto-process` ラベル付き Issue 起票
+4. 1106PC orchestrator が 10 分以内に拾って処理・コメント返信
+5. 結果を Chatwork で受信
+
 ## Qwen 評価結果サマリ（2026-05-04 govcheck セッション）
 
 実旅程（5/8〜5/19 上海→西寧→敦煌→ウルムチ→成都→上海）ベースの 5 テスト（高鉄予約 / MUプラチナ升艙券 / 天山天池視察 / 広島ヒルトン既知答え / 上海長寧区居留許可管理局）を国際版・中国版両方に投入し比較評価。
