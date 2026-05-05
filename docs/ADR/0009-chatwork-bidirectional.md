@@ -515,11 +515,11 @@ ssh ejsan@100.104.151.97 'C:\Tools\nssm\nssm.exe restart AIEijiChatworkMCP'
 Remove-Variable pwd, secure, BSTR
 ```
 
-###### 検証結果（2026-05-04）
+###### 検証結果（2026-05-04 第 1 段時点）
 
 - WMI Win32_Service: `StartName: .\ejsan` / `State: Running` / `ProcessId: 8720`
-- `/health` 応答: 正常（chatwork-mcp v0.4.0・paused:false・guards正常）
-- Issue #30 反映: 次回 audit 発火（chatwork ツール呼び出し or stop_monitor STOP_KEYWORDS 検出）時に確認
+- `/health` 応答: 正常
+- ⚠️ Issue #30 audit_post **依然失敗**（後述「H3 改訂 第 2 段」で根治）
 
 ###### H3 改訂で失われない耐性
 
@@ -528,6 +528,65 @@ ObjectName が `.\ejsan` でも、サービス起動は **OS ログオン不要*
 ###### 前提条件（運用上の落とし穴）
 
 ejsan の **ローカル NTLM パスワードキャッシュが古いと nssm set ObjectName で認証失敗**する。PIN 中心運用で長期間 NTLM パスワード未使用の PC では、`Win+L → ロック画面 → パスワードでサインイン` で事前にキャッシュ更新必要（memory `feedback_microsoft_account_pc_pin_only.md` 参照）。
+
+##### H3 改訂 第 2 段: `GH_TOKEN` env 経由認証への切替（2026-05-05 同日夜）
+
+ObjectName 変更後の audit smoke test（`audit.append()` を直接呼ぶ ad-hoc Node スクリプト経由）で、依然として `gh exited 1: HTTP 401: Bad credentials` が発生。さらなる切り分けで以下が判明:
+
+1. **1106PC ejsan の `gh` keyring 内 token が invalid**（過去の `gh auth login` が expire/revoke 済）
+2. **chatwork-mcp プロセス自身**（nssm 起動・ObjectName=`.\ejsan`）と、**ssh セッション内テスト Node プロセス**は env が独立 → テストヘルパーで nssm `AppEnvironmentExtra` から GH_TOKEN を読み込む必要あり
+3. 最初に発行した PAT が **Fine-grained PAT（93 chars / `github_pat_` prefix）** で、Issue write 権限が初期付与されない
+4. **nssm.exe の出力は UTF-16 LE**。PowerShell ヘルパーで `[Console]::OutputEncoding = [System.Text.Encoding]::Unicode` を先に設定しないと文字化けして regex マッチ失敗
+
+###### 採用した恒久対応
+
+| 項目 | 値 |
+|---|---|
+| 認証方式 | `gh` keyring → **`GH_TOKEN` env 経由**（gh は `GH_TOKEN` を keyring より優先） |
+| PAT 種類 | **classic**（40 chars / `ghp_` prefix） |
+| PAT 権限 | `repo` scope（Issue write 含む） |
+| PAT 有効期限 | 1 year（2027-05 失効・**期限前に再発行 + 再設定必須**） |
+| PAT 保存場所 | nssm `AppEnvironmentExtra`（`GH_TOKEN=ghp_...`） |
+
+###### 設定コマンド（履歴に残さない方式）
+
+```powershell
+$secureToken = Read-Host -Prompt "Paste classic GitHub PAT (ghp_... 40 chars)" -AsSecureString
+$BSTR = [System.Runtime.InteropServices.Marshal]::SecureStringToBSTR($secureToken)
+$ghToken = [System.Runtime.InteropServices.Marshal]::PtrToStringAuto($BSTR)
+if ($ghToken.Length -ne 40 -or -not $ghToken.StartsWith("ghp_")) { throw "Invalid PAT" }
+$envValue = "GH_TOKEN=" + $ghToken
+ssh ejsan@100.104.151.97 "C:\Tools\nssm\nssm.exe set AIEijiChatworkMCP AppEnvironmentExtra `"$envValue`""
+ssh ejsan@100.104.151.97 'C:\Tools\nssm\nssm.exe restart AIEijiChatworkMCP'
+[System.Runtime.InteropServices.Marshal]::ZeroFreeBSTR($BSTR)
+Remove-Variable ghToken, secureToken, BSTR, envValue
+Clear-History
+Remove-Item (Get-PSReadLineOption).HistorySavePath -Force -ErrorAction SilentlyContinue
+```
+
+ペースト経路（PSReadLine が SecureString 入力中のペーストをブロックする問題への対処）: PowerShell の Read-Host が `*` で待機状態になっているところに、GitHub の 📋 ボタンで PAT をコピーした後 **Ctrl+V または Shift+Insert** で 1 操作ペースト。ペースト不可な PowerShell ホストの場合は、無題メモ帳に貼り付けてからスクリプト全体（PAT 文字列リテラルとして埋め込む）を一度にコピペし、最後に `Clear-History` + `Remove-Item HistorySavePath` で履歴消去。
+
+###### 検証結果（2026-05-05 第 2 段）
+
+- Issue #30 `updatedAt`: `2026-05-05T00:06:00Z`
+- 本文最終更新: `2026-05-05T00:05:59.709Z`
+- **4/30 14:59 以降停止していた 5 件**（stop_monitor blocked × 4 + audit_post_test × 1）が反映 → **完全復旧**
+- IssuePoster の `gh issue edit` spawn 経路、HTTP 401 → success に転換確認
+
+###### なぜ `GH_TOKEN` env か（vs `gh auth login --with-token`）
+
+- `gh auth login --with-token` で keyring に保存しても、サービス再起動・OS 再起動・Autologon 失敗時に keyring アクセス失敗事例あり
+- `GH_TOKEN` env は keyring より優先・サービス自身のプロセス env として確実に渡る
+- nssm `AppEnvironmentExtra` は `CHATWORK_API_TOKEN` を `.env` で保存しているのと同レベルのセキュリティ（容認範囲）
+- PAT を Fine-grained にするか classic にするかは将来の検討事項。Fine-grained にする場合 `Repository access: aieiji-ops` + `Permissions: Issues Read and write` を明示する必要があり classic より煩雑
+
+###### PAT 失効時の再発行手順（カレンダーに登録推奨・2027-05 頃）
+
+1. https://github.com/settings/tokens で旧 PAT を Revoke（任意）
+2. 「Tokens (classic)」サイドバー → 「Generate new token (classic)」（▼ プルダウンで明示選択）
+3. Note: `AIEiji 1106PC chatwork-mcp Issue #30 audit_post (classic)` / Expiration 1 year / Scopes `repo`
+4. 上記「設定コマンド」を再実行（PAT を新しい値で）
+5. test smoke: 1106PC で `audit.append()` を呼ぶ ad-hoc Node スクリプト → Issue #30 `updatedAt` が更新されれば OK
 
 #### Phase 3 で残る作業（引き続き別セッションで）
 
